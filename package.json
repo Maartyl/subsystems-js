@@ -1,0 +1,22 @@
+{
+  "name": "subsystems",
+  "version": "0.0.1",
+  "description": "simple dependency injection",
+  "main": "main.js",
+  "scripts": {
+    "test": "test.js"
+  },
+  "keywords": [
+    "component",
+    "system",
+    "subsystem",
+    "dependency",
+    "injection",
+    "manager"
+  ],
+  "author": "maartyl",
+  "license": "ISC",
+  "dependencies": {
+    "toposort": "^1.0.0"
+  }
+}
