@@ -57,11 +57,11 @@ inject = (dependency_name) -> new SubsystemInjectorStub dependency_name
 
 # retuns list of dependencies
 # [[to from]] (to: which fild to inject) (from: dependency name)
-scan = (obj) -> [[k, v.dep] for k, v of obj when isInjector v]
+scan = (obj) -> [k, v.dep] for k, v of obj when isInjector v
 
 # builds edges(dependencies) for this part of graph
 # FOR SINGLE NODE
-make_edges = (name, scanned) -> [[dep name] for [field, dep] in scanned]
+make_edges = (name, scanned) -> [dep, name] for [field, dep] in scanned
 
 # returns list that can be passed topo (to get order of starting)
 # map_subs :: (dependency_name -> subsystem)
@@ -73,8 +73,9 @@ make_deps = (map_subs, cont) ->
     if dep is 'start' then continue #ignore the start method
 
     scanned = scan sub
+#     console.log 'make_deps:sub', sub
     deps_edges = deps_edges.concat make_edges dep, scanned
-    unless sub.start? and typeof sub.start is 'function'
+    if typeof sub.start isnt 'function'
       cont new Error "passed subsystem doesn't have start method - #{dep}:#{sub}"
 
     nexts[dep] = do(scanned, sub)-> (started, cont) ->
@@ -94,13 +95,14 @@ build_context = (nodes, nexts, started, final_cont)->
 
 execute_context = (cxt) ->
   if cxt.index >= cxt.nodes.length # already started all subsystems
-    return cxt.final_cont OK, cxt.started
+    return cxt.cont OK, cxt.started
 
   dep = cxt.nodes[cxt.index++]
+  if cxt.started[dep] then return execute_context cxt #already started by someone else
 
   #injects + provides api: stored in started and used by following nexts
   cxt.nexts[dep] cxt.started, (err, sub_api) ->
-    if err then return cxt.final_cont err
+    if err then return cxt.cont err
 
     cxt.started[dep] = sub_api
     execute_context cxt
@@ -108,11 +110,17 @@ execute_context = (cxt) ->
 # map :: (dependency_name -> subsystem)
 # started: (dep_name -> api) #for when this system already depends on another
 start_map = (map, started, final_cont) -> make_deps map, (err, deps, nexts) ->
-  if err then final_cont err else
-    nodes = try topo(edges)
-    catch err
-      final_cont new Error 'Cyclic dependency: ' + err
-    execute_context build_context nodes, nexts, started, final_cont
+  if err then return final_cont err
+
+  try nodes = topo(deps)
+  catch err then return final_cont err #cyclic dependency
+
+  unmets = (dep for dep in nodes when not (nexts[dep]? or started[dep]?))
+  if unmets.length isnt 0
+    return final_cont new Error 'Unmet dependencies: ' + unmets
+
+  execute_context build_context nodes, nexts, started, final_cont
+
 
 
 # @system: somethingthat 'just' composes it, START is what matters
@@ -149,7 +157,7 @@ map2system = (map) ->
   map2system map
 
 # this system is assumed to have no unmet dependencies
-@start = (system, cont) -> start_map _root:system, {}, ({_root}) -> cont _root
+@start = (system, cont) -> system.start cont
 
 
 ## UTILS
@@ -161,6 +169,24 @@ fmap = (dep, fn) -> new class
 # subsystem which exports some function of it's single dependency
 @fmap = fmap
 @field = (dep, field) -> fmap dep, (v)->v?[field]
+
+# rename dependencies
+# MUTATES system ('s injects)
+# map (old(inside(require))name -> new(outside)name)
+rename = (system, map) ->
+  s = scan system
+  for [key, old] in s
+    system[key] = inject map[old]
+  system
+
+
+@rename = (system, map) ->
+  if map.start? then throw new Error "No dependency may be called 'start'."
+  rename system, map
+
+
+
+
 
 
 #end
