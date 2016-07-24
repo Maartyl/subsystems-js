@@ -48,6 +48,8 @@ util = require 'util'
 
 jstr = (o) -> util.inspect o, depth:5
 
+isFn = (o) -> typeof o is 'function'
+
 OK = null # passed in error field
 
 class SubsystemInjectorStub
@@ -62,6 +64,9 @@ inject = (dependency_name) -> new SubsystemInjectorStub dependency_name
 # [[to from]] (to: which fild to inject) (from: dependency name)
 scan = (obj) -> [k, v.dep] for k, v of obj when isInjector v
 
+# get dependencies of a subsystem
+@dependencies = scan
+
 # builds edges(dependencies)
 # FOR SINGLE NODE name
 make_edges = (name, scanned) -> [dep, name] for [field, dep] in scanned
@@ -75,23 +80,21 @@ make_deps = (map_subs, cont) ->
   for dep, sub of map_subs
     scanned = scan sub #get all fields with InjectorStub and what they depend on
     deps_edges = deps_edges.concat make_edges dep, scanned #append all dependencies to edges
-    if typeof sub.start isnt 'function'
+    unless isFn sub.start
       return cont new Error "passed subsystem doesn't have start method - #{jstr dep}:#{jstr sub}"
 
     nexts[dep] = do(dep, scanned, sub, starter=sub.start)-> (started, cont) ->
       sub.start = (cont) -> cont OK, started[dep] #replace start method with just map lookup to cashed result
-      if started[dep]? then return cont OK, started[dep]
+      if started[dep]? then return cont OK, started[dep] #probably always checked outside, but better safe...
 
-      for [field, sub_dep] in scanned
-        unless started[sub_dep]? then return cont new Error "Unmet dependency: #{jstr sub_dep}"
-
-        #inject: set field to required from map of started deps
-        sub[field] = started[sub_dep]
+      for [field, sub_dep] in scanned #it should always be in started (start_map check should catch)
+        unless started[sub_dep]? then return cont new Error "#Unmet dependency: #{jstr sub_dep}"
+        sub[field] = started[sub_dep] #inject: set field to required from map of started deps
       starter.call sub, cont
 
   cont OK, deps_edges, nexts
 
-build_context = (nodes, nexts, started, final_cont)->
+build_context = (nodes, nexts, started, final_cont) ->
   index: 0 #where am I on nodes (which to start next)
   nodes: nodes # toposorted dependency names
   nexts: nexts # functions to start subsystems
@@ -103,6 +106,7 @@ execute_context = (cxt) ->
     return cxt.cont OK, cxt.started
 
   dep = cxt.nodes[cxt.index++]
+  if cxt.started[dep]? then return execute_context cxt # already started (needs to be here, not in nexts[])
 
   #injects + provides api: stored in started and used by following nexts
   cxt.nexts[dep] cxt.started, (err, sub_api) ->
@@ -119,13 +123,13 @@ start_map = (map, started, final_cont) -> make_deps map, (err, deps, nexts) ->
   try nodes = topo(deps) #topologically sort dependency graph
   catch err then return final_cont err #cyclic dependency
 
-  console.log jstr
-    map:map
-    started:started
-    deps: deps
-    nexts: nexts
-    nodes: nodes
-
+#   console.log jstr
+#     map:map
+#     started:started
+#     deps: deps
+#     nexts: nexts
+#     nodes: nodes
+#
   unmets = (jstr dep for dep in nodes when not (nexts[dep]? or started[dep]?))
   if unmets.length isnt 0
     return final_cont new Error 'Unmet dependencies: ' + unmets
@@ -146,10 +150,10 @@ map2system = (map) ->
     else
       met_keys.push k
 
-  console.log jstr
-    m2s_unmet:unmet_keys
-    m2s_met:met_keys
-
+#   console.log jstr
+#     m2s_unmet:unmet_keys
+#     m2s_met:met_keys
+#
   map.start = (cont) ->
     started = {}
     unstarted = {}
@@ -161,12 +165,12 @@ map2system = (map) ->
       unstarted[k] = map[k]
 
 
-    console.log jstr
-      m2s_unmet:unmet_keys
-      m2s_met:met_keys
-      started:started
-      unstarted:unstarted
-
+#     console.log jstr
+#       m2s_unmet:unmet_keys
+#       m2s_met:met_keys
+#       started:started
+#       unstarted:unstarted
+#
     start_map unstarted, started, cont
 
   map
@@ -184,7 +188,7 @@ map2system = (map) ->
   if s.length isnt 0
   then cont new Error "Cannot start system with unmet dependencies: #{jstr dep for[k, dep]in s}."
   else
-    if typeof system.start isnt 'function'
+    unless isFn system.start
     then cont new Error 'No start method on system.'
     else system.start cont
 

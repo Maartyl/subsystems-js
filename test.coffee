@@ -3,86 +3,81 @@ util = require 'util'
 
 OK = null
 
-a =
-  x: 5
-b =
-  da: s.inject 'a'
-  y: 8
-c =
-  da: s.inject 'a'
-  db: s.inject 'b'
-  z: 42
+mk = (val, map) ->
+  ss = {}
+  ss.val = val
+  for k, v of map
+    ss[k] = s.inject v
+  ss.start = (cont) -> cont OK, ss
+  ss
 
-a.start = (cont) -> cont OK, x:778
-b.start = (cont) -> cont OK, b
-c.start = (cont) -> cont OK, c
-
+a = -> mk 778,  {}
+b = -> mk 8,    da:'a'
+c = -> mk 42,   da:'a', db:'b'
 
 # circular dependency
-d =
-  de: s.inject 'e'
-  dc: s.inject 'c'
-  x: 5
-e =
-  dd: s.inject 'd'
-  x: 8
-e2 =
-  x: 80
-
-
-d.start = (cont) -> cont OK, d
-e.start = (cont) -> cont OK, e
-e2.start = (cont) -> cont OK, e2
+d = -> mk 5,    de:'e', dc:'c'
+e = -> mk 16,   dd:'d'
+e2= -> mk 80,   {}
 
 
 S1 = -> s.system
-  a: a
-  b: b
-  c: c
+  a: a()
+  b: b()
+  c: c()
 
 #unmet dependency
 S2 = -> s.system
-#   b: b
-  c: c
+#   b: b()
+  c: c()
 
 S3 = -> s.system
-  a: a
-  b: b
-  c: c
-  d: d
-  e: e
+  a: a()
+  b: b()
+  c: c()
+  d: d()
+  e: e()
 
 # cyclic + unmet
 S4 = -> s.system
-  d: d
-  e: e
+  d: d()
+  e: e()
 
 
 S5 = -> s.system
   c: S1()
-  d: d
-  e: e2
+  d: d()
+  e: e2()
 
 S6 = -> s.system
   s1: S1()
   c: s.field 's1', 'c'
-  d: d
-  e: e2
+  d: d()
+  e: e2()
 
 # system with external dependencies
-S22 = -> s.system
+S72 = -> s.system
   a: s.inject 'ka'
-  b: s.inject 'kb'
-  c: c
-
+  b: b()
 S7 = -> s.system
-  ka: a
-  kb: b
-  s2: S22()
-  q: s.field 's2', 'c'
+  ka: a()
+  s2: S72()
+  q: s.field 's2', 'b'
 
-s.start S7(), (err, api) ->
-  console.log 'final:err:', err
-  console.log 'final:api:', util.inspect api, depth:null, colors:true
+# rename
+S8 = -> s.system
+  qa: a()
+  b: s.rename b(), a:'qa'
+
+S9 = -> s.system #self cycle + rename
+  b: s.rename b(), a:'b'
+
+systems = S1:S1, S2:S2, S3:S3, S4:S4, S5:S5, S6:S6, S7:S7, S8:S8, S9:S9
+
+for name, SX of systems
+  console.log 'test:', name
+  s.start SX(), (err, api) ->
+    console.log 'final:err:', err
+    console.log 'final:api:', util.inspect api, depth:null, colors:true
 
 
