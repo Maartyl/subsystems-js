@@ -44,6 +44,9 @@
 # CONT used by start:: (err, api)->()
 
 topo = require 'toposort'
+util = require 'util'
+
+jstr = (o) -> util.inspect o, depth:5
 
 OK = null # passed in error field
 
@@ -59,8 +62,8 @@ inject = (dependency_name) -> new SubsystemInjectorStub dependency_name
 # [[to from]] (to: which fild to inject) (from: dependency name)
 scan = (obj) -> [k, v.dep] for k, v of obj when isInjector v
 
-# builds edges(dependencies) for this part of graph
-# FOR SINGLE NODE
+# builds edges(dependencies)
+# FOR SINGLE NODE name
 make_edges = (name, scanned) -> [dep, name] for [field, dep] in scanned
 
 # returns list that can be passed topo (to get order of starting)
@@ -70,19 +73,21 @@ make_deps = (map_subs, cont) ->
   deps_edges = []
   nexts = {}
   for dep, sub of map_subs
-    if dep is 'start' then continue #ignore the start method
-
-    scanned = scan sub
-#     console.log 'make_deps:sub', sub
-    deps_edges = deps_edges.concat make_edges dep, scanned
+    scanned = scan sub #get all fields with InjectorStub and what they depend on
+    deps_edges = deps_edges.concat make_edges dep, scanned #append all dependencies to edges
     if typeof sub.start isnt 'function'
-      cont new Error "passed subsystem doesn't have start method - #{dep}:#{sub}"
+      return cont new Error "passed subsystem doesn't have start method - #{jstr dep}:#{jstr sub}"
 
-    nexts[dep] = do(scanned, sub)-> (started, cont) ->
-      for [field, dep] in scanned
-        unless started[dep] then return cont new Error "Unmet dependency: #{dep}"
-        sub[field] = started[dep] #inject: set field to required from map of started deps
-      sub.start cont
+    nexts[dep] = do(dep, scanned, sub, starter=sub.start)-> (started, cont) ->
+      sub.start = (cont) -> cont OK, started[dep] #replace start method with just map lookup to cashed result
+      if started[dep]? then return cont OK, started[dep]
+
+      for [field, sub_dep] in scanned
+        unless started[sub_dep]? then return cont new Error "Unmet dependency: #{jstr sub_dep}"
+
+        #inject: set field to required from map of started deps
+        sub[field] = started[sub_dep]
+      starter.call sub, cont
 
   cont OK, deps_edges, nexts
 
@@ -98,7 +103,6 @@ execute_context = (cxt) ->
     return cxt.cont OK, cxt.started
 
   dep = cxt.nodes[cxt.index++]
-  if cxt.started[dep] then return execute_context cxt #already started by someone else
 
   #injects + provides api: stored in started and used by following nexts
   cxt.nexts[dep] cxt.started, (err, sub_api) ->
@@ -112,10 +116,17 @@ execute_context = (cxt) ->
 start_map = (map, started, final_cont) -> make_deps map, (err, deps, nexts) ->
   if err then return final_cont err
 
-  try nodes = topo(deps)
+  try nodes = topo(deps) #topologically sort dependency graph
   catch err then return final_cont err #cyclic dependency
 
-  unmets = (dep for dep in nodes when not (nexts[dep]? or started[dep]?))
+  console.log jstr
+    map:map
+    started:started
+    deps: deps
+    nexts: nexts
+    nodes: nodes
+
+  unmets = (jstr dep for dep in nodes when not (nexts[dep]? or started[dep]?))
   if unmets.length isnt 0
     return final_cont new Error 'Unmet dependencies: ' + unmets
 
@@ -135,15 +146,26 @@ map2system = (map) ->
     else
       met_keys.push k
 
+  console.log jstr
+    m2s_unmet:unmet_keys
+    m2s_met:met_keys
+
   map.start = (cont) ->
     started = {}
     unstarted = {}
 
     for k in unmet_keys
-      if isInjector map[k] then cont new Error "system with unmet dependency: #{k}"
+      if isInjector map[k] then cont new Error "system with unmet dependency: #{jstr k}"
       started[k] = map[k]
     for k in met_keys
       unstarted[k] = map[k]
+
+
+    console.log jstr
+      m2s_unmet:unmet_keys
+      m2s_met:met_keys
+      started:started
+      unstarted:unstarted
 
     start_map unstarted, started, cont
 
@@ -157,7 +179,14 @@ map2system = (map) ->
   map2system map
 
 # this system is assumed to have no unmet dependencies
-@start = (system, cont) -> system.start cont
+@start = (system, cont) ->
+  s = scan system
+  if s.length isnt 0
+  then cont new Error "Cannot start system with unmet dependencies: #{jstr dep for[k, dep]in s}."
+  else
+    if typeof system.start isnt 'function'
+    then cont new Error 'No start method on system.'
+    else system.start cont
 
 
 ## UTILS
