@@ -186,7 +186,7 @@ map2system = (map) ->
 @start = (system, cont) ->
   s = scan system
   if s.length isnt 0
-  then cont new Error "Cannot start system with unmet dependencies: #{jstr dep for[k, dep]in s}."
+  then cont new Error "Cannot start system with unmet dependencies: #{jstr dep for [k, dep ] in s}."
   else
     unless isFn system.start
     then cont new Error 'No start method on system.'
@@ -197,7 +197,10 @@ map2system = (map) ->
 
 fmap = (dep, fn) -> new class
   value: inject dep
-  start: (cont) => cont OK, fn @value
+  start: (cont) => # cont OK, fn @value
+    try v = fn @value #if fn throws: fail continuation
+    catch err then cont err
+    cont OK, v
 
 # subsystem which exports some function of it's single dependency
 @fmap = fmap

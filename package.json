@@ -4,7 +4,7 @@
   "description": "simple dependency injection",
   "main": "main.js",
   "scripts": {
-    "test": "test.js"
+    "test": "./node_modules/.bin/mocha --reporter spec"
   },
   "keywords": [
     "component",
@@ -18,5 +18,9 @@
   "license": "ISC",
   "dependencies": {
     "toposort": "^1.0.0"
+  },
+  "devDependencies": {
+    "chai": "*",
+    "mocha": "*"
   }
 }
