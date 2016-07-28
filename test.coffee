@@ -1,4 +1,4 @@
-s = require './main.js'
+s = require 'p/subsystems'
 util = require 'util'
 
 OK = null

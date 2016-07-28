@@ -120,16 +120,10 @@ execute_context = (cxt) ->
 start_map = (map, started, final_cont) -> make_deps map, (err, deps, nexts) ->
   if err then return final_cont err
 
-  try nodes = topo(deps) #topologically sort dependency graph
+  unsorted_nodes = do->(k for k, v of map) # include all nodes (even if unmentioned in depepndencies)
+  try nodes = topo.array unsorted_nodes, deps #topologically sort dependency graph
   catch err then return final_cont err #cyclic dependency
 
-#   console.log jstr
-#     map:map
-#     started:started
-#     deps: deps
-#     nexts: nexts
-#     nodes: nodes
-#
   unmets = (jstr dep for dep in nodes when not (nexts[dep]? or started[dep]?))
   if unmets.length isnt 0
     return final_cont new Error 'Unmet dependencies: ' + unmets
@@ -150,10 +144,6 @@ map2system = (map) ->
     else
       met_keys.push k
 
-#   console.log jstr
-#     m2s_unmet:unmet_keys
-#     m2s_met:met_keys
-#
   map.start = (cont) ->
     started = {}
     unstarted = {}
@@ -164,13 +154,6 @@ map2system = (map) ->
     for k in met_keys
       unstarted[k] = map[k]
 
-
-#     console.log jstr
-#       m2s_unmet:unmet_keys
-#       m2s_met:met_keys
-#       started:started
-#       unstarted:unstarted
-#
     start_map unstarted, started, cont
 
   map
@@ -219,8 +202,6 @@ rename = (system, map) ->
 @rename = (system, map) ->
   if map.start? then throw new Error "No dependency may be called 'start'."
   rename system, map
-
-
 
 
 
