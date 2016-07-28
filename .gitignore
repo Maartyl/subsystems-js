@@ -1,9 +1,9 @@
 node_modules/**
 logs
 
-*.js.map
-**/*.js.map
+#*.js.map
+#**/*.js.map
 
 # compiled
-*.js
-**/*.js
+#*.js
+#**/*.js
