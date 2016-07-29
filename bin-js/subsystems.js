@@ -72,7 +72,7 @@
       scanned = scan(sub);
       deps_edges = deps_edges.concat(make_edges(dep, scanned));
       if (!isFn(sub.start)) {
-        return cont(new Error("passed subsystem doesn't have start method - " + (jstr(dep)) + ":" + (jstr(sub))));
+        return cont(new Error("Passed subsystem doesn't have start method - " + (jstr(dep)) + ":" + (jstr(sub)) + "."));
       }
       nexts[dep] = (function(dep, scanned, sub, starter) {
         return function(started, cont) {
@@ -86,7 +86,7 @@
           for (i = 0, len = scanned.length; i < len; i++) {
             ref = scanned[i], field = ref[0], sub_dep = ref[1];
             if (started[sub_dep] == null) {
-              return cont(new Error("#Unmet dependency: " + (jstr(sub_dep))));
+              return cont(new Error("Unmet dependency: " + (jstr(sub_dep)) + "."));
             }
             sub[field] = started[sub_dep];
           }
@@ -158,7 +158,7 @@
         return results;
       })();
       if (unmets.length !== 0) {
-        return final_cont(new Error('Unmet dependencies: ' + unmets));
+        return final_cont(new Error("Unmet dependencies: " + unmets + "."));
       }
       return execute_context(build_context(nodes, nexts, started, final_cont));
     });
@@ -183,7 +183,7 @@
       for (i = 0, len = unmet_keys.length; i < len; i++) {
         k = unmet_keys[i];
         if (isInjector(map[k])) {
-          cont(new Error("system with unmet dependency: " + (jstr(k))));
+          cont(new Error("System with unmet dependency: " + (jstr(k)) + "."));
         }
         started[k] = map[k];
       }

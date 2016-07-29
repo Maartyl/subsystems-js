@@ -8,13 +8,17 @@ s = require 'p/subsystems'
 
 OK = null #for err fields
 
-mk = (val, map) ->
+mk_base = (err, init, fmap) -> (val, map) ->
   ss = {}
-  ss.val = val
+  init ss, val
   for k, v of map
     ss[k] = s.inject v
-  ss.start = (cont) -> cont OK, ss
+  ss.start = (cont) -> cont err, fmap ss
   ss
+
+mk = mk_base OK,
+  (o, val) -> o.val = val
+  (o) -> o
 
 a = -> mk 778,  {}
 b = -> mk 8,    da:'a'
@@ -26,10 +30,6 @@ e = -> mk 16,   dd:'d'
 e2= -> mk 80,   {}
 
 
-S1 = -> s.system
-  a: a()
-  b: b()
-  c: c()
 
 #unmet dependency
 S2 = -> s.system
@@ -96,14 +96,30 @@ catching = (done, fn) ->
   catch err then return done(err)
   done OK
 
+#done: mocha.done
+#extra: tests(api)
 expect_ok = (done, extra) ->
   extra = extra or ->OK
   #return callback to .start
   (err, api) -> catching done, ->
     if err then throw err
     extra api
+#
+#done: mocha.done
+#extra: tests(err)
+expect_err = (done, extra) ->
+  extra = extra or ->OK
+  #return callback to .start
+  (err, api) -> catching done, ->
+    unless err then throw new Error "Missing error (api: #{api})"
+    extra err
 
 
+#variant: expect_ok | expect_err
+#sysmap: passed to s.system
+#extra: passed to variant
+system_test = (variant, sysmap, extra) -> (done) ->
+  s.start (s.system sysmap), variant done, extra
 
 
 
@@ -115,36 +131,78 @@ describe 'trivial', ->
 
 describe 'system', ->
   describe 'working', ->
+    describe 'simple', ->
 
-    it 'simple a', (done) ->
-      S = s.system
+      it 'a', system_test expect_ok,
         a: mk 42, {}
-      s.start S, expect_ok done, (api) ->
-        expect(api).to.have.deep.property 'a.val', 42
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
 
-    it 'simple a,b', (done) ->
-      S = s.system
+      it 'a,b', system_test expect_ok,
         a: mk 42, {}
         b: mk 12, {}
-      s.start S, expect_ok done, (api) ->
-        expect(api).to.have.deep.property 'a.val', 42
-        expect(api).to.have.deep.property 'b.val', 12
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
+          expect(api).to.have.deep.property 'b.val', 12
 
-    it 'simple a<b', (done) ->
-      S = s.system
+      it 'a<b', system_test expect_ok,
         a: mk 42, {}
         b: mk 12, {da:'a'}
-      s.start S, expect_ok done, (api) ->
-        expect(api).to.have.deep.property 'a.val', 42
-        expect(api).to.have.deep.property 'b.val', 12
-        expect(api).to.have.deep.property 'b.da', api.a
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
+          expect(api).to.have.deep.property 'b.val', 12
+          expect(api).to.have.deep.property 'b.da', api.a
+
+      it 'a<b<c', system_test expect_ok,
+        a: mk 42, {}
+        b: mk 12, {da:'a'}
+        c: mk 28, {db:'b'}
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
+          expect(api).to.have.deep.property 'b.val', 12
+          expect(api).to.have.deep.property 'c.val', 28
+          expect(api).to.have.deep.property 'b.da', api.a
+          expect(api).to.have.deep.property 'c.db', api.b
+
+      it '(a<b)<c', system_test expect_ok,
+        a: mk 42, {}
+        b: mk 12, {da:'a'}
+        c: mk 28, {da:'a', db:'b'}
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
+          expect(api).to.have.deep.property 'b.val', 12
+          expect(api).to.have.deep.property 'c.val', 28
+          expect(api).to.have.deep.property 'b.da', api.a
+          expect(api).to.have.deep.property 'c.da', api.a
+          expect(api).to.have.deep.property 'c.db', api.b
+          expect(api).to.have.deep.property 'c.db.da', api.a
 
 
 
+    describe 'fmap,field,rename', -> 0
+    describe 'subsystems', -> 0
 
-  describe 'broken', -> 0
+  describe 'broken', ->
+    describe 'unmet dependencies', ->
+
+      it 'a', system_test expect_err,
+        a: mk 42, {dx:'nonexistent_dep'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'nmet dependenc' #[Uu]nmet c(ies|y)
+
+      it 'a,b', system_test expect_err,
+        a: mk 42, {dx:'nonexistent_dep'}
+        b: mk 40, {dx:'nonexistent_dep'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'nmet dependenc' #[Uu]nmet c(ies|y)
+
+      it 'a>b', system_test expect_err,
+        a: mk 42, {dx:'b'}
+        b: mk 40, {dx:'nonexistent_dep'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'nmet dependenc' #[Uu]nmet c(ies|y)
 
 
-
-
-describe 'util', -> 0

@@ -81,14 +81,14 @@ make_deps = (map_subs, cont) ->
     scanned = scan sub #get all fields with InjectorStub and what they depend on
     deps_edges = deps_edges.concat make_edges dep, scanned #append all dependencies to edges
     unless isFn sub.start
-      return cont new Error "passed subsystem doesn't have start method - #{jstr dep}:#{jstr sub}"
+      return cont new Error "Passed subsystem doesn't have start method - #{jstr dep}:#{jstr sub}."
 
     nexts[dep] = do(dep, scanned, sub, starter=sub.start)-> (started, cont) ->
       sub.start = (cont) -> cont OK, started[dep] #replace start method with just map lookup to cashed result
       if started[dep]? then return cont OK, started[dep] #probably always checked outside, but better safe...
 
-      for [field, sub_dep] in scanned #it should always be in started (start_map check should catch)
-        unless started[sub_dep]? then return cont new Error "#Unmet dependency: #{jstr sub_dep}"
+      for [field, sub_dep] in scanned #start_map check doesn't catch some edge cases (unreal dep...)
+        unless started[sub_dep]? then return cont new Error "Unmet dependency: #{jstr sub_dep}."
         sub[field] = started[sub_dep] #inject: set field to required from map of started deps
       starter.call sub, cont
 
@@ -126,13 +126,14 @@ start_map = (map, started, final_cont) -> make_deps map, (err, deps, nexts) ->
 
   unmets = (jstr dep for dep in nodes when not (nexts[dep]? or started[dep]?))
   if unmets.length isnt 0
-    return final_cont new Error 'Unmet dependencies: ' + unmets
+    return final_cont new Error "Unmet dependencies: #{unmets}."
 
   execute_context build_context nodes, nexts, started, final_cont
 
 
 
-# @system: somethingthat 'just' composes it, START is what matters
+# @system: something that 'just' composes it, START is what matters
+# + keeps track of which deps are met externally (injects) and which need to be started
 
 
 map2system = (map) ->
@@ -149,7 +150,7 @@ map2system = (map) ->
     unstarted = {}
 
     for k in unmet_keys
-      if isInjector map[k] then cont new Error "system with unmet dependency: #{jstr k}"
+      if isInjector map[k] then cont new Error "System with unmet dependency: #{jstr k}."
       started[k] = map[k]
     for k in met_keys
       unstarted[k] = map[k]
@@ -169,7 +170,7 @@ map2system = (map) ->
 @start = (system, cont) ->
   s = scan system
   if s.length isnt 0
-  then cont new Error "Cannot start system with unmet dependencies: #{jstr dep for [k, dep ] in s}."
+  then cont new Error "Cannot start system with unmet dependencies: #{jstr dep for [k, dep] in s}."
   else
     unless isFn system.start
     then cont new Error 'No start method on system.'
