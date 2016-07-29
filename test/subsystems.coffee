@@ -27,28 +27,7 @@ mk_err = (err, map) ->
     (o) -> o
   )(undefined, map)
 
-a = -> mk 778,  {}
-b = -> mk 8,    da:'a'
-c = -> mk 42,   da:'a', db:'b'
 
-# circular dependency
-d = -> mk 5,    de:'e', dc:'c'
-e = -> mk 16,   dd:'d'
-e2= -> mk 80,   {}
-
-
-# cycle through subsystems
-# turns out, that to wire it correctly, one needs to create a cycle in the higher level too
-SA = -> s.system
-  s1: s.system
-    a: s.inject 'a'
-    b: b()
-  s2: s.system
-    a: s.rename b(), a:'b'
-    b: s.inject 'b'
-  a: s.field 's2', 'a'
-  b: s.field 's1', 'b'
-  c:c()
 
 
 catching = (done, fn) ->
