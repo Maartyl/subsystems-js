@@ -31,11 +31,6 @@ e2= -> mk 80,   {}
 
 
 
-#unmet dependency
-S2 = -> s.system
-#   b: b()
-  c: c()
-
 S3 = -> s.system
   a: a()
   b: b()
@@ -104,7 +99,7 @@ expect_ok = (done, extra) ->
   (err, api) -> catching done, ->
     if err then throw err
     extra api
-#
+
 #done: mocha.done
 #extra: tests(err)
 expect_err = (done, extra) ->
@@ -126,7 +121,6 @@ system_test = (variant, sysmap, extra) -> (done) ->
 describe 'trivial', ->
   it 'creates system', ->
     sys = s.system {}
-#     expect(sys).to.have.property 'start'
     expect(sys.start).to.be.a 'function'
 
 describe 'system', ->
