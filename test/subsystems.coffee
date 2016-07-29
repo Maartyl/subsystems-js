@@ -38,26 +38,6 @@ e2= -> mk 80,   {}
 
 
 
-S5 = -> s.system
-  c: S1()
-  d: d()
-  e: e2()
-
-S6 = -> s.system
-  s1: S1()
-  c: s.field 's1', 'c'
-  d: d()
-  e: e2()
-
-# system with external dependencies
-S72 = -> s.system
-  a: s.inject 'ka'
-  b: b()
-S7 = -> s.system
-  ka: a()
-  s2: S72()
-  q: s.field 's2', 'b'
-
 # rename
 S8 = -> s.system
   qa: a()
@@ -121,6 +101,9 @@ describe 'system', ->
   describe 'working', ->
     describe 'simple', ->
 
+      it 'empty', system_test expect_ok, {},
+        (api) -> expect(api).to.eql {}
+
       it 'a', system_test expect_ok,
         a: mk 42, {}
         (api) ->
@@ -166,7 +149,53 @@ describe 'system', ->
           expect(api).to.have.deep.property 'c.db.da', api.a
 
 
-    describe 'subsystems', -> 0
+    describe 'subsystems', ->
+
+      it 'a.b', system_test expect_ok,
+        a: s.system
+          b: mk 42, {}
+        (api) ->
+          expect(api).to.have.deep.property 'a.b.val', 42
+
+      it 'a.b, a.kc', system_test expect_ok,
+        c: mk 12, {}
+        a: s.system
+          kc: s.inject 'c'
+          b: mk 42, {ka:'kc'}
+        (api) ->
+          expect(api).to.have.deep.property 'a.b.val', 42
+          expect(api).to.have.deep.property 'a.kc.val', 12
+          expect(api).to.have.deep.property 'a.b.ka.val', 12
+
+      it 'a,b', system_test expect_ok,
+        a: s.system
+          r: mk 10, {}
+          aq: mk 42, {dr:'r'}
+        b: s.system
+          bq: mk 12, {}
+        (api) ->
+          expect(api).to.have.deep.property 'a.aq.val', 42
+          expect(api).to.have.deep.property 'a.r.val', 10
+          expect(api).to.have.deep.property 'b.bq.val', 12
+          expect(api).to.have.deep.property 'a.aq.dr.val', 10
+          expect(api).to.have.deep.property 'a.aq.dr', api.a.r
+
+      it 'a<b', system_test expect_ok,
+        a: s.system
+          r: mk 10, {}
+          aq: mk 42, {dr:'r'}
+        b: s.system
+          z: s.inject 'a'
+          bq: mk 12, {dz:'z'}
+        (api) ->
+          expect(api).to.have.deep.property 'a.aq.val', 42
+          expect(api).to.have.deep.property 'a.r.val', 10
+          expect(api).to.have.deep.property 'b.bq.val', 12
+          expect(api).to.have.deep.property 'a.aq.dr.val', 10
+          expect(api).to.have.deep.property 'a.aq.dr', api.a.r
+          expect(api).to.have.deep.property 'b.z', api.a
+          expect(api).to.have.deep.property 'b.bq.dz.aq.dr.val', 10
+
 
     describe 'fmap,field,rename', -> 0
 
