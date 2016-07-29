@@ -20,6 +20,13 @@ mk = mk_base OK,
   (o, val) -> o.val = val
   (o) -> o
 
+#erroneous subsystem
+mk_err = (err, map) ->
+  (mk_base err,
+    (o, val) -> 0
+    (o) -> o
+  )(undefined, map)
+
 a = -> mk 778,  {}
 b = -> mk 8,    da:'a'
 c = -> mk 42,   da:'a', db:'b'
@@ -29,19 +36,6 @@ d = -> mk 5,    de:'e', dc:'c'
 e = -> mk 16,   dd:'d'
 e2= -> mk 80,   {}
 
-
-
-S3 = -> s.system
-  a: a()
-  b: b()
-  c: c()
-  d: d()
-  e: e()
-
-# cyclic + unmet
-S4 = -> s.system
-  d: d()
-  e: e()
 
 
 S5 = -> s.system
@@ -172,9 +166,9 @@ describe 'system', ->
           expect(api).to.have.deep.property 'c.db.da', api.a
 
 
+    describe 'subsystems', -> 0
 
     describe 'fmap,field,rename', -> 0
-    describe 'subsystems', -> 0
 
   describe 'broken', ->
     describe 'unmet dependencies', ->
@@ -199,4 +193,58 @@ describe 'system', ->
           expect(err).to.have.property 'message'
           .and.to.contain 'nmet dependenc' #[Uu]nmet c(ies|y)
 
+    describe 'cyclic dependencies', ->
+
+      it 'a<>b', system_test expect_err,
+        a: mk 42, {db:'b'}
+        b: mk 40, {da:'a'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'yclic dependenc' #[Cc]...
+
+      it 'c<a<b<c', system_test expect_err,
+        a: mk 42, {db:'c'}
+        b: mk 40, {da:'a'}
+        c: mk 44, {da:'b'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'yclic dependenc' #[Cc]...
+
+      it 'c<a<b<c, d', system_test expect_err,
+        a: mk 42, {db:'c'}
+        b: mk 40, {da:'a'}
+        c: mk 44, {da:'b'}
+        d: mk 13, {dx:'a'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'yclic dependenc' #[Cc]...
+          .and.to.not.contain '"d"' #d isn't part of cycle
+
+      it '?<a<>b', system_test expect_err, # cyclic has priority over missing
+        a: mk 42, {db:'b', dx:'nonexistent_dep'}
+        b: mk 40, {da:'a', dx:'nonexistent_dep2'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'yclic dependenc' #[Cc]...
+
+    describe 'error while starting subsystem', ->
+
+      it 'a', do(er=new Error)-> system_test expect_err,
+        a: mk_err er, {}
+        (err) -> expect(err).to.equal er
+
+      it 'a<b', do(er=new Error)-> system_test expect_err,
+        a: mk_err er, {}
+        b: mk 42, {da:'a'}
+        (err) -> expect(err).to.equal er
+
+      it 'e1<e2', do(e1=new Error, e2=new Error)-> system_test expect_err,
+        b: mk_err e2, {da:'a'}
+        a: mk_err e1, {} #shoould return first error in topo order
+        (err) -> expect(err).to.equal e1
+
+      it 'a<er', do(er=new Error)-> system_test expect_err,
+        a: mk_err er, {db:'b'}
+        b: mk 42, {}
+        (err) -> expect(err).to.equal er
 
