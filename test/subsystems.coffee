@@ -37,10 +37,6 @@ e = -> mk 16,   dd:'d'
 e2= -> mk 80,   {}
 
 
-
-S9 = -> s.system #self cycle + rename
-  b: s.rename b(), a:'b'
-
 # cycle through subsystems
 # turns out, that to wire it correctly, one needs to create a cycle in the higher level too
 SA = -> s.system
@@ -88,6 +84,13 @@ system_test = (variant, sysmap, extra) -> (done) ->
 
 
 describe 'trivial', ->
+  it 'has all methods', ->
+    expect(s.system).to.exist
+    expect(s.start).to.exist
+    expect(s.field).to.exist
+    expect(s.fmap).to.exist
+    expect(s.rename).to.exist
+
   it 'creates system', ->
     sys = s.system {}
     expect(sys.start).to.be.a 'function'
@@ -143,7 +146,6 @@ describe 'system', ->
           expect(api).to.have.deep.property 'c.db', api.b
           expect(api).to.have.deep.property 'c.db.da', api.a
 
-
     describe 'subsystems', ->
 
       it 'a.b', system_test expect_ok,
@@ -191,7 +193,6 @@ describe 'system', ->
           expect(api).to.have.deep.property 'b.z', api.a
           expect(api).to.have.deep.property 'b.bq.dz.aq.dr.val', 10
 
-
     describe 'fmap,field,rename', ->
 
       it 'rename', system_test expect_ok,
@@ -234,8 +235,6 @@ describe 'system', ->
           expect(api).to.have.deep.property 'a.g.val', 42
           expect(api).to.have.deep.property 'b.val', 42
           expect(api).to.have.deep.property 'v', 42
-
-
 
   describe 'broken', ->
     describe 'unmet dependencies', ->
@@ -302,6 +301,19 @@ describe 'system', ->
 
       it 'a<>(b->a)', system_test expect_err,
         a: s.rename (mk 42, {db:'b'}), b:'a'
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'yclic dependenc' #[Cc]...
+
+      it 'between subsystems', system_test expect_err,
+        a: s.system
+          ax: s.inject 'x'
+          ay: mk 42, {dax:'ax'}
+        b: s.system
+          bx: mk 12, {dby:'by'}
+          by: s.inject 'y'
+        x: s.field 'b', 'bx'
+        y: s.field 'a', 'ay'
         (err) ->
           expect(err).to.have.property 'message'
           .and.to.contain 'yclic dependenc' #[Cc]...
