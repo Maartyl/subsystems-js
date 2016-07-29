@@ -38,11 +38,6 @@ e2= -> mk 80,   {}
 
 
 
-# rename
-S8 = -> s.system
-  qa: a()
-  b: s.rename b(), a:'qa'
-
 S9 = -> s.system #self cycle + rename
   b: s.rename b(), a:'b'
 
@@ -197,7 +192,50 @@ describe 'system', ->
           expect(api).to.have.deep.property 'b.bq.dz.aq.dr.val', 10
 
 
-    describe 'fmap,field,rename', -> 0
+    describe 'fmap,field,rename', ->
+
+      it 'rename', system_test expect_ok,
+        a: mk 42, {}
+        b: s.rename (mk 12, {q:'test'}),
+          test:'a'
+        (api) ->
+          expect(api).to.have.deep.property 'b.val', 12
+          expect(api).to.have.deep.property 'b.q.val', 42
+
+      it 'field', system_test expect_ok,
+        a: mk 42, {}
+        b: s.field 'a', 'val' # on dep 'a' access field 'val'
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
+          expect(api).to.have.deep.property 'b', 42
+
+      it 'fmap - replace', system_test expect_ok,
+        a: mk 42, {}
+        b: s.fmap 'a', (a) -> if a.val is 42 then 1337 else 0
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
+          expect(api).to.have.deep.property 'b', 1337
+
+      it 'field rename', system_test expect_ok,
+        a: mk 42, {}
+        b: s.rename (s.field 'test', 'val'),
+          test:'a'
+        (api) ->
+          expect(api).to.have.deep.property 'a.val', 42
+          expect(api).to.have.deep.property 'b', 42
+
+      it 'subsystem field rename', system_test expect_ok,
+        a: s.system
+          g: mk 42, {}
+        b: s.rename (s.field 'test', 'g'),
+          test:'a'
+        v: s.field 'b', 'val' # also field of field ^^
+        (api) ->
+          expect(api).to.have.deep.property 'a.g.val', 42
+          expect(api).to.have.deep.property 'b.val', 42
+          expect(api).to.have.deep.property 'v', 42
+
+
 
   describe 'broken', ->
     describe 'unmet dependencies', ->
@@ -252,6 +290,18 @@ describe 'system', ->
       it '?<a<>b', system_test expect_err, # cyclic has priority over missing
         a: mk 42, {db:'b', dx:'nonexistent_dep'}
         b: mk 40, {da:'a', dx:'nonexistent_dep2'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'yclic dependenc' #[Cc]...
+
+      it 'a<>a', system_test expect_err,
+        a: mk 42, {db:'a'}
+        (err) ->
+          expect(err).to.have.property 'message'
+          .and.to.contain 'yclic dependenc' #[Cc]...
+
+      it 'a<>(b->a)', system_test expect_err,
+        a: s.rename (mk 42, {db:'b'}), b:'a'
         (err) ->
           expect(err).to.have.property 'message'
           .and.to.contain 'yclic dependenc' #[Cc]...
