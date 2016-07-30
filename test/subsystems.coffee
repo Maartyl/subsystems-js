@@ -327,3 +327,37 @@ describe 'system', ->
       it 'inject', ->
         fn = -> mk 42, {da:'start'}
         expect(fn).to.throw Error, /called \'start\'/
+
+      it 'rename from', ->
+        fn = -> s.rename (mk 42, {da:'a'}), {start:'b'}
+        expect(fn).to.throw Error, /called \'start\'/
+
+      it 'rename to', ->
+        fn = -> s.rename (mk 42, {da:'a'}), {a:'start'}
+        expect(fn).to.throw Error, /called \'start\'/
+
+      it 'fmap', ->
+        fn = -> s.field 'start', 'start_here_is_fine'
+        expect(fn).to.throw Error, /called \'start\'/
+        fn = -> s.field 'not_start', 'start'
+        expect(fn).to.not.throw Error
+
+    describe 'starting', ->
+
+      it 'misses start method', ->
+        cont = (err) -> if err then throw err
+        fn = -> s.start {not_a_start:5}, cont
+        expect(fn).to.throw Error, /No start method on system/
+        fn = -> s.start {start:5}, cont # not a fn
+        expect(fn).to.throw Error, /No start method on system/
+        fn = -> s.start {}, cont
+        expect(fn).to.throw Error, /No start method on system/
+
+      it 'unmet dependencies', system_test expect_err,
+        a: s.inject 'unmet_dep'
+        (err) -> do(fn=->throw err)->
+          expect(fn).to.throw Error, /unmet dependencies/
+
+
+
+
