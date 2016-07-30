@@ -34,6 +34,9 @@
   };
 
   inject = function(dependency_name) {
+    if (dependency_name === 'start') {
+      throw new Error("No dependency may be called 'start'.");
+    }
     return new SubsystemInjectorStub(dependency_name);
   };
 

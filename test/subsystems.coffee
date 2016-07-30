@@ -318,3 +318,12 @@ describe 'system', ->
         b: mk 42, {}
         (err) -> expect(err).to.equal er
 
+    describe 'dependency named start', ->
+    
+      it 'system', ->
+        fn = -> s.system start: mk 42, {}
+        expect(fn).to.throw Error, /called \'start\'/
+
+      it 'inject', ->
+        fn = -> mk 42, {da:'start'}
+        expect(fn).to.throw Error, /called \'start\'/

@@ -53,7 +53,9 @@ class SubsystemInjectorStub
 
 isInjector = (obj)-> obj instanceof SubsystemInjectorStub
 
-inject = (dependency_name) -> new SubsystemInjectorStub dependency_name
+inject = (dependency_name) ->
+  if dependency_name is 'start' then throw new Error "No dependency may be called 'start'."
+  new SubsystemInjectorStub dependency_name
 @inject = inject
 
 # retuns list of dependencies
