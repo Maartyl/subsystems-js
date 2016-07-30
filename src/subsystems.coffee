@@ -63,7 +63,7 @@ inject = (dependency_name) ->
 scan = (obj) -> [k, v.dep] for k, v of obj when isInjector v
 
 # get dependencies of a subsystem
-@dependencies = scan
+# @dependencies = scan #possibly in the future, if needed
 
 # builds edges(dependencies)
 # FOR SINGLE NODE name

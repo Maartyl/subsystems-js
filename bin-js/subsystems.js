@@ -54,8 +54,6 @@
     return results;
   };
 
-  this.dependencies = scan;
-
   make_edges = function(name, scanned) {
     var dep, field, i, len, ref, results;
     results = [];
