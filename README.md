@@ -31,7 +31,7 @@ In addition to `start` method, a subsystem might have any number of dependencies
 
 A dependency is defined as any property with value obtained from calling `inject` function:
 
-      obj.db = subsystems.inject 'db-dep'
+      obj.db = subsystems.inject('db-dep');
 
 `obj` now depends on `'db-dep'`.
 
@@ -50,16 +50,27 @@ any number of any dependencies (that aren't 'start').
 ## API
 
 ### `system`
+`:: map -> system`
 
 ### `inject`
+`:: dependency_name -> dependency_descriptor`
 
 ### `start`
+`:: (system, cont)->()`
+Performs some checks and invokes `start` method on given `system`, providing given callback `cont`.
+
+The callback receives whatever api the system provides.
 
 ### `rename`
+`:: (system, map) -> system`
+`map :: {inner_dep_name -> outer_dep_name}`
 
 ### `fmap`
+`:: (dependency_name, fn) -> system`
+`fn :: api -> api`
 
 #### `field`
+`:: (dependency_name, field_name) -> system`
 
 ---
 
