@@ -85,6 +85,8 @@ start s, (err, api) ->
   i_can_use_any_of_above api.ctrl
 ```
 
+For more details see [API](#api) or for exact details and expectations [tests](test/subsystems.coffee).
+
 ### Limitations
 - no dependency may be called 'start'
 - only provides starting and cannot be used to change anything afterwards
@@ -149,7 +151,7 @@ All subsystems should have dependecy names that make the most sense in that subs
 This means that system and subsystem use different name to describe the same dependency.
 To connect them, one has to describe which pair together.
 
-##### example
+#### example
 ```javascript
 var sub_foo = {
   db: inject('db'),
@@ -180,7 +182,7 @@ This function provides a simple mechanism to create a new dependency that is a '
 #### `field`
     :: (dependency_name, field_name) -> system
 
-Common, special variant of fmap, with `fn ~= api[field_name]`.
+Common, special variant of `fmap`, with `fn ~= api[field_name]`.
 
 ## Contributing
 - more tests are always welcome
