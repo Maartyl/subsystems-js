@@ -62,6 +62,10 @@ Performs some checks and invokes `start` method on given `system`, providing giv
 
 The callback receives whatever api the system provides.
 
+This *should only be called once*, at the very 'root' of the application;
+to start it after all components (subsystems) have been correctly provided
+and 'required' by the other subsystems.
+
 ### `rename`
     :: (system, map) -> system
     map :: {inner_dep_name -> outer_dep_name}
