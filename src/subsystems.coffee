@@ -6,10 +6,7 @@
 # @start function :: System -> It'sAPI (generally map of started subsystems)
 #
 #
-#
-# SOLVE PROBLEM OF DEFINING DEPS ON THIS SYSTEM
-# all unmet? ... sounds legit, although... probably not known recursively...
-#
+# solve problem of defining deps on this system
 # HAS TO BE EXPLICIT ^
 #
 # and cont gets map of all the started subsystems
@@ -25,9 +22,8 @@
 #
 # if a dependency CANNOT BE FOUND: must produce nice error
 # if a CYCLIC dependency is found: must produce nice error
-# etc.
 #
-# ANOTHER Q: how will I perform the injection itself?
+# how will I perform the INJECTION ITSELF?
 # : all 'done' store in a map
 # : keep info who needs what: take from the map, before calling start
 # -- (Will be there by the time it's needed; if not: missing dependency (would probably notice in toposort anyway))
@@ -35,7 +31,7 @@
 # -- and THAT FUNCTION CAN JUST END WITH CALLING START, having everything ordered implicitly
 # -- takes rest of initialization as argument... - all async and good ^^
 #
-# let's call that: next(cont)   (== inject + call start)
+# let's call that: next(started, cont)   (== inject + call start)
 # : this function itself probably needs current context (loaded deps map; what to call at end; sorted deps...)
 #
 # NO DEPENDENCY CAN BE CALLED START
@@ -131,10 +127,8 @@ start_map = (map, started, final_cont) -> make_deps map, (err, deps, nexts) ->
   execute_context build_context nodes, nexts, started, final_cont
 
 
-
 # @system: something that 'just' composes it, START is what matters
 # + keeps track of which deps are met externally (injects) and which need to be started
-
 
 map2system = (map) ->
   unmet_keys = [] # whether system itself has some :inject values
@@ -190,21 +184,16 @@ fmap = (dep, fn) -> new class
 @fmap = fmap
 @field = (dep, field) -> fmap dep, (v)->v?[field]
 
-# rename dependencies
-# MUTATES system ('s injects)
-# map (old(inside(require))name -> new(outside)name)
 rename = (system, map) ->
   s = scan system
   for [key, old] in s
     system[key] = inject map[old]
   system
 
-
+# rename dependencies
+# MUTATES system ('s injects)
+# map (old(inside(require))name -> new(outside)name)
 @rename = (system, map) ->
   if map.start? then throw new Error "No dependency may be called 'start'."
   rename system, map
 
-
-
-
-#end
