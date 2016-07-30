@@ -1,11 +1,11 @@
 {
   "name": "subsystems",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "simple dependency injection",
   "main": "index.js",
-  "repository" : { 
-    "type" : "git",
-    "url" : "https://github.com/Maartyl/subsystems-js.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Maartyl/subsystems-js.git"
   },
   "scripts": {
     "test": "NODE_ENV=test ./node_modules/.bin/mocha --reporter spec --require coffee-script/register --compilers coffee:coffee-script --recursive",
