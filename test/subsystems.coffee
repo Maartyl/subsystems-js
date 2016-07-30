@@ -65,6 +65,7 @@ system_test = (variant, sysmap, extra) -> (done) ->
 describe 'trivial', ->
   it 'has all methods', ->
     expect(s.system).to.exist
+    expect(s.inject).to.exist
     expect(s.start).to.exist
     expect(s.field).to.exist
     expect(s.fmap).to.exist

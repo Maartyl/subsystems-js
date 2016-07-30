@@ -10,6 +10,33 @@ a very flexible and cheap way to (asynchronously) compose such subsystems.
 I suggest using more feature rich dependency managers for large projects,
 but for small or medium sized proejects, this library might be perfectly enough...
 
+## Installation
+`npm install subsystems`
+
+## Overview
+
+### Subsystem (contract)
+
+### Functionality
+
+#### Examples
+
+### Limitations
+
+## API
+
+### `system`
+
+### `inject`
+
+### `start`
+
+### `rename`
+
+### `fmap`
+
+#### `field`
+
 ---
 
 This library was inspired by [Stuart Sierra's Component](https://youtu.be/13cmHf_kt-Q).
