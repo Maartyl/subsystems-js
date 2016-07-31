@@ -199,3 +199,70 @@ rename = (system, map) ->
   if map.start? then throw new Error "No dependency may be called 'start'."
   rename system, map
 
+
+wrap = (api) -> start: (cont) -> cont OK, api
+#just wrap value into a system structure
+@wrap = wrap
+
+api_diff = (ss) ->
+  reference = {} #store what is curretnlty in ss, so one can do diff at end and only export changes
+  for k, v of ss
+    reference[k] = v
+  () -> #returns function that creats api from diff compared to first call
+    api = {}
+    for k, v of ss
+      unless reference[k] is v #if already present in reference: not new: don't export
+        api[k] = v #put all diffs on ss to api
+    api
+
+subsystem = (core) -> (deps, ctor) ->
+  if deps.start? then throw new Error "No dependency field may be called 'start'."
+  -> #return creator function
+
+    ss = {} #subsystem
+    for k, v of deps
+      ss[k] = inject v
+
+    ss.start = core ctor.bind(ss), ss
+    ss
+
+#start versions
+
+#ctor:: ()->()
+subsystem.sync = (ctor, ss) -> (cont) ->
+  mk_api = api_diff ss
+
+  try do ctor #update (initialize) ss, after all deps met
+  catch err then return cont err
+
+  cont OK, do mk_api
+
+#ctor:: (cont::(err)->()) -> ()
+subsystem.async = (ctor, ss) -> (cont) ->
+  mk_api = api_diff ss
+
+  try ctor (err) ->
+    if err then return cont err
+    cont OK, do mk_api
+
+#ctor:: () -> api
+subsystem.ret = (ctor, ss) -> (cont) ->
+  cont.apply undefined,
+      try [OK, do ctor]
+      catch err then [err]
+
+#ctor:: (cont) -> ()
+#cont:: (err, api) -> ()
+# subsystem.ret.async = (ctor, ss) -> (cont) -> ctor cont
+subsystem.ret.async = (ctor, ss) -> ctor
+
+
+#allows very simple creation of (lowest level) subsystems
+#exports diff of `this` created by ctor
+# :: (deps, ctor) -> (args...) -> system
+# deps :: {field -> dep_name}
+# ctor :: ()->() - updates `this`
+@subsystem = subsystem subsystem.sync
+@subsystem.async = subsystem subsystem.async
+@subsystem.ret = subsystem subsystem.ret
+@subsystem.ret.async = subsystem subsystem.ret.async

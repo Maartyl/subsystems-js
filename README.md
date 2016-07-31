@@ -59,7 +59,7 @@ If you are not familiar with CoffeeScript, you can easily
 [compile it to JS](http://coffeescript.org/#try:%7Binject%2C%20system%2C%20field%2C%20rename%2C%20start%7D%20%3D%20require%20'subsystems'%0A%0A%23the%20following%20%60sub%60%20vars%20would%20generally%20be%20in%20different%20files%20...%0A%23and%20a%20new%20(mutable)%20subsystem%20would%20be%20created%20each%20time%0A%0Asub_db%20%3D%20new%20class%20%23new%20class%20just%20allows%20me%20to%20reference%20other%20fields%0A%20%20conf%3A%20inject%20'config'%0A%20%20start%3A%20(cont)%20%3D%3E%20load_db_somehow%20%40conf.conn%2C%20%40conf.user%2C%20%40conf.password%2C%20cont%0A%0Asub_config%20%3D%20start%3A%20(cont)%20-%3E%20readJSON%20'config.json'%2C%20cont%0A%0Asub_ctrl%20%3D%20new%20class%0A%20%20db%3A%20inject%20'db'%0A%20%20start%3A%20(cont)%20%3D%3E%20use_db_whatever%20%40db%2C%20cont%0A%0As%20%3D%20system%0A%20%20config%3A%20sub_config%0A%20%20conf_db1%3A%20field%20'config'%2C%20'db1'%0A%0A%20%20db1%3A%20rename%20sub_db%2C%20%7Bconfig%3A'conf_db1'%7D%0A%20%20ctrl%3A%20rename%20sub_ctrl%2C%20%7Bdb%3A'db1'%7D%0Astart%20s%2C%20(err%2C%20api)%20-%3E%0A%20%20if%20err%20then%20return%20handle_err%20err%0A%20%20i_can_use_any_of_above%20api.ctrl%0A).
 
 ```coffeescript
-{inject, system, field, rename, start} = require 'subsystems'
+{inject, system, field, rename, start, subsystem} = require 'subsystems'
 
 #the following `sub` vars would generally be in different files ...
 #and a new (mutable) subsystem would be created each time
@@ -74,15 +74,20 @@ sub_ctrl = new class
   db: inject 'db'
   start: (cont) => use_db_whatever @db, cont
 
+# common way to define modules supplying subsystems
+sub_app = subsystem {db:'db', ctrl:'ctrl'}, ->
+  @api_method = ... @db.something ... @ctrl ...
+
 s = system
   config: sub_config
   conf_db1: field 'config', 'db1'
 
   db1: rename sub_db, {config:'conf_db1'}
   ctrl: rename sub_ctrl, {db:'db1'}
+  app: sub_app()
 start s, (err, api) ->
   if err then return handle_err err
-  i_can_use_any_of_above api.ctrl
+  i_can_use_any_of_above api.ctrl, api.app.api_method
 ```
 
 For more details see [API](#api) or for exact details and expectations [tests](test/subsystems.coffee).
@@ -121,6 +126,38 @@ Adds `start` method to `map` which:
 It is possible to supply only `inject` instead of subsystem directly,
 which allows for the whole system to have dependencies, but then it cannot be started directly
 but instead only used as subsystem.
+
+### `subsystem`
+    :: (deps, ctor) -> () -> system
+    deps :: {field -> dep_name}
+    ctor :: ()->() - updates `this`
+    !throws if deps.start or deps.*.start
+
+Creates base subsystem, that doesn't compose any subsystems, but (most likely) defines some dependencies.
+
+Dependencies can be accessed through `this.field_from_deps`.
+
+The api will be created from any changes to `this` in ctor.
+
+#### `subsystem.async`
+    :: like subsystem
+    ctor :: (done) -> () - updates `this`
+    done :: (err?) -> ()
+
+Like `sybsystem`, but asynchronous.
+
+#### `subsystem.ret`
+    :: like subsystem
+    ctor :: () -> api
+
+Returns api directly, instead of computing it from changes to `this`.
+
+#### `subsystem.ret.async`
+    :: like subsystem.ret
+    ctor :: (cont) -> ()
+    cont :: (err, api) -> ()
+
+Returns api directly and asynchronously, instead of computing it from changes to `this`.
 
 ### `inject`
     :: dependency_name -> dependency_descriptor
@@ -183,6 +220,11 @@ This function provides a simple mechanism to create a new dependency that is a '
     :: (dependency_name, field_name) -> system
 
 Common, special variant of `fmap`, with `fn ~= api[field_name]`.
+
+### `wrap`
+    :: (obj) -> system
+
+Returns system that provides obj as it's api and has no dependencies.
 
 ## Contributing
 - more tests are always welcome

@@ -69,11 +69,22 @@ describe 'trivial', ->
     expect(s.start).to.exist
     expect(s.field).to.exist
     expect(s.fmap).to.exist
+    expect(s.wrap).to.exist
     expect(s.rename).to.exist
+    expect(s.subsystem).to.exist
+    expect(s.subsystem.async).to.exist
+    expect(s.subsystem.ret).to.exist
+    expect(s.subsystem.ret.async).to.exist
 
   it 'creates system', ->
     sys = s.system {}
     expect(sys.start).to.be.a 'function'
+
+  it 'creates subsystem', ->
+    sys = do s.subsystem {}, -> do=> #takes different context
+      @a = 5
+    expect(sys.start).to.be.a 'function'
+
 
 describe 'system', ->
   describe 'working', ->
@@ -173,6 +184,60 @@ describe 'system', ->
           expect(api).to.have.deep.property 'b.z', api.a
           expect(api).to.have.deep.property 'b.bq.dz.aq.dr.val', 10
 
+    describe 'base subsystem', ->
+
+      it 'simple', system_test expect_ok,
+        a: do s.subsystem {}, ->do=> @b=42
+        (api) ->
+          expect(api).to.have.deep.property 'a.b', 42
+
+      it 'a<s<k', system_test expect_ok,
+        a: mk 1
+        s: do s.subsystem
+          da:'a'
+          ->do=> @start= (42 + @da.val) #can export start
+        k: s.field 's', 'start'
+        (api) ->
+          expect(api).to.have.deep.property 's.start', (42+api.a.val)
+          expect(api).to.have.deep.property 'k', (42+api.a.val)
+          expect(api).to.not.have.deep.property 's.da'
+
+      it 'a<s<k async', system_test expect_ok,
+        a: mk 1
+        s: do s.subsystem.async
+          da:'a'
+          (done)->do=>
+            @start= (42 + @da.val)
+            setTimeout done, 2
+        k: s.field 's', 'start'
+        (api) ->
+          expect(api).to.have.deep.property 's.start', (42+api.a.val)
+          expect(api).to.have.deep.property 'k', (42+api.a.val)
+          expect(api).to.not.have.deep.property 's.da'
+
+      it 'a<s<k ret', system_test expect_ok,
+        a: mk 1
+        s: do s.subsystem.ret
+          da:'a'
+          ->do=> {start: (42 + @da.val)}
+        k: s.field 's', 'start'
+        (api) ->
+          expect(api).to.have.deep.property 's.start', (42+api.a.val)
+          expect(api).to.have.deep.property 'k', (42+api.a.val)
+          expect(api).to.not.have.deep.property 's.da'
+
+      it 'a<s<k ret.async', system_test expect_ok,
+        a: mk 1
+        s: do s.subsystem.ret.async
+          da:'a'
+          (cont)->do=>
+            setTimeout (=>cont OK, {start: (42 + @da.val)}), 2
+        k: s.field 's', 'start'
+        (api) ->
+          expect(api).to.have.deep.property 's.start', (42+api.a.val)
+          expect(api).to.have.deep.property 'k', (42+api.a.val)
+          expect(api).to.not.have.deep.property 's.da'
+
     describe 'fmap,field,rename', ->
 
       it 'rename', system_test expect_ok,
@@ -215,6 +280,21 @@ describe 'system', ->
           expect(api).to.have.deep.property 'a.g.val', 42
           expect(api).to.have.deep.property 'b.val', 42
           expect(api).to.have.deep.property 'v', 42
+
+      it 'wrap', system_test expect_ok,
+        a: s.wrap 42
+        (api) ->
+          expect(api).to.have.property 'a', 42
+
+      it 'wrap<b, fmap', system_test expect_ok,
+        a: s.wrap 42
+        b: mk 8, {da:'a'}
+        c: s.fmap 'a', (a) -> a + 8
+        (api) ->
+          expect(api).to.have.deep.property 'a', 42
+          expect(api).to.have.deep.property 'b.val', 8
+          expect(api).to.have.deep.property 'b.da', 42
+          expect(api).to.have.deep.property 'c', 50
 
   describe 'broken', ->
     describe 'unmet dependencies', ->
@@ -323,6 +403,12 @@ describe 'system', ->
     
       it 'system', ->
         fn = -> s.system start: mk 42, {}
+        expect(fn).to.throw Error, /called \'start\'/
+
+      it 'subsystem', ->
+        fn = -> s.subsystem start: 'dep', ->0
+        expect(fn).to.throw Error, /called \'start\'/
+        fn = -> do s.subsystem ok: 'start', ->0
         expect(fn).to.throw Error, /called \'start\'/
 
       it 'inject', ->
