@@ -1,6 +1,6 @@
 {
   "name": "subsystems",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "simple dependency injection",
   "main": "index.js",
   "repository": {
