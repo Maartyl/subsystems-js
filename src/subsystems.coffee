@@ -83,10 +83,10 @@ make_deps = (map_subs, cont) ->
 
     nexts[dep] = do(dep, scanned, sub, starter=sub.start)-> (started, cont) ->
       sub.start = (cont) -> cont OK, started[dep] #replace start method with just map lookup to cashed result
-      if started[dep]? then return cont OK, started[dep] #probably always checked outside, but better safe...
+      if dep of started then return cont OK, started[dep] #probably always checked outside, but better safe...
 
       for [field, sub_dep] in scanned #start_map check doesn't catch some edge cases (unreal dep...)
-        unless started[sub_dep]? then return cont new Error "Unmet dependency: #{jstr sub_dep}."
+        unless sub_dep of started then return cont new Error "Unmet dependency: #{jstr sub_dep}."
         sub[field] = started[sub_dep] #inject: set field to required from map of started deps
       starter.call sub, cont
 
@@ -104,7 +104,7 @@ execute_context = (cxt) ->
     return cxt.cont OK, cxt.started
 
   dep = cxt.nodes[cxt.index++]
-  if cxt.started[dep]? then return execute_context cxt # already started (needs to be here, not in nexts[])
+  if dep of cxt.started then return execute_context cxt # already started (needs to be here, not in nexts[])
 
   #injects + provides api: stored in started and used by following nexts
   cxt.nexts[dep] cxt.started, (err, sub_api) ->
@@ -122,7 +122,7 @@ start_map = (map, started, final_cont) -> make_deps map, (err, deps, nexts) ->
   try nodes = topo.array unsorted_nodes, deps #topologically sort dependency graph
   catch err then return final_cont err #cyclic dependency
 
-  unmets = (jstr dep for dep in nodes when not (nexts[dep]? or started[dep]?))
+  unmets = (jstr dep for dep in nodes when not (nexts[dep]? or dep of started))
   if unmets.length isnt 0
     return final_cont new Error "Unmet dependencies: #{unmets}."
 
@@ -179,12 +179,22 @@ fmap = (dep, fn) -> new class
   value: inject dep
   start: (cont) => # cont OK, fn @value
     try v = fn @value #if fn throws: fail continuation
-    catch err then cont err
+    catch err then return cont err
     cont OK, v
 
 # subsystem which exports some function of it's single dependency
 @fmap = fmap
-@field = (dep, field) -> fmap dep, (v)->v?[field]
+
+# field of a dependency (following arguments are used as gield of that and of that...)
+@field = (dep, fields...) -> fmap dep, (v)->
+  ret = v
+  for field in fields
+    unless field of Object ret
+      throw new Error "Field #{jstr field} not in #{jstr ret}. @" + jstr
+        fields:fields
+        dep_value:v
+    ret = ret[field]
+  ret
 
 rename = (system, map) ->
   s = scan system

@@ -50,7 +50,7 @@ expect_err = (done, extra) ->
   extra = extra or ->OK
   #return callback to .start
   (err, api) -> catching done, ->
-    unless err then throw new Error "Missing error (api: #{api})"
+    unless err then throw new Error "Missing error (api: #{JSON.stringify api})"
     extra err
 
 
@@ -255,6 +255,13 @@ describe 'system', ->
           expect(api).to.have.deep.property 'a.val', 42
           expect(api).to.have.deep.property 'b', 42
 
+      it 'field - multi', system_test expect_ok,
+        a: mk {a:b:42}, {}
+        b: s.field 'a', 'val', 'a', 'b'
+        (api) ->
+          expect(api).to.have.deep.property 'a.val.a.b', 42
+          expect(api).to.have.deep.property 'b', 42
+
       it 'fmap - replace', system_test expect_ok,
         a: mk 42, {}
         b: s.fmap 'a', (a) -> if a.val is 42 then 1337 else 0
@@ -444,4 +451,18 @@ describe 'system', ->
         a: s.inject 'unmet_dep'
         (err) -> do(fn=->throw err)->
           expect(fn).to.throw Error, /unmet dependencies/
+
+    describe 'util', ->
+
+      it 'field - not present', system_test expect_err,
+        a: mk 5
+        b: s.field 'a', 'noy'
+        (err) -> do(fn=->throw err)->
+          expect(fn).to.throw Error, /Field 'noy' not in/
+
+      it 'field - multi - not present', system_test expect_err,
+        a: mk 5
+        b: s.field 'a', 'val', 'ge'
+        (err) -> do(fn=->throw err)->
+          expect(fn).to.throw Error, /Field 'ge' not in 5/
 
