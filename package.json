@@ -23,6 +23,7 @@
   "author": "maartyl",
   "license": "ISC",
   "dependencies": {
+    "debug": "^2.2.0",
     "toposort": "^1.0.0"
   },
   "devDependencies": {

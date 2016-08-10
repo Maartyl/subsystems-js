@@ -458,11 +458,11 @@ describe 'system', ->
         a: mk 5
         b: s.field 'a', 'noy'
         (err) -> do(fn=->throw err)->
-          expect(fn).to.throw Error, /Field 'noy' not in/
+          expect(fn).to.throw Error, /Field 'noy' not present./
 
       it 'field - multi - not present', system_test expect_err,
         a: mk 5
         b: s.field 'a', 'val', 'ge'
         (err) -> do(fn=->throw err)->
-          expect(fn).to.throw Error, /Field 'ge' not in 5/
+          expect(fn).to.throw Error, /Field 'ge' not present./
 

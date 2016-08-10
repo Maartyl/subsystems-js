@@ -262,10 +262,7 @@
       for (i = 0, len = fields.length; i < len; i++) {
         field = fields[i];
         if (!(field in Object(ret))) {
-          throw new Error(("Field " + (jstr(field)) + " not in " + (jstr(ret)) + ". @") + jstr({
-            fields: fields,
-            dep_value: v
-          }));
+          throw new Error("Field " + (jstr(field)) + " not present.");
         }
         ret = ret[field];
       }

@@ -190,9 +190,7 @@ fmap = (dep, fn) -> new class
   ret = v
   for field in fields
     unless field of Object ret
-      throw new Error "Field #{jstr field} not in #{jstr ret}. @" + jstr
-        fields:fields
-        dep_value:v
+      throw new Error "Field #{jstr field} not present."
     ret = ret[field]
   ret
 
