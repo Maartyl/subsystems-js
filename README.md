@@ -23,7 +23,7 @@ where `cont :: (err, api)->()`
 and `api` being whatever the subsystem wishes to provide to others.
 The start method has to invoke the continuation (once).
 
-There's no difference between a system and a subsystem, 
+There's no difference between a system and a subsystem,
 other than subsystems being immediate children of the system.
 
 #### Dependencies
@@ -54,7 +54,7 @@ any number of any dependencies (that aren't 'start').
 - flexible (subsystem is free to provide arbitrary api)
 
 #### Example
-Examples are in *CoffeeScript*, to make them as simple to read as possible. 
+Examples are in *CoffeeScript*, to make them as simple to read as possible.
 If you are not familiar with CoffeeScript, you can easily
 [compile it to JS](http://coffeescript.org/#try:%7Binject%2C%20system%2C%20field%2C%20rename%2C%20start%7D%20%3D%20require%20'subsystems'%0A%0A%23the%20following%20%60sub%60%20vars%20would%20generally%20be%20in%20different%20files%20...%0A%23and%20a%20new%20(mutable)%20subsystem%20would%20be%20created%20each%20time%0A%0Asub_db%20%3D%20new%20class%20%23new%20class%20just%20allows%20me%20to%20reference%20other%20fields%0A%20%20conf%3A%20inject%20'config'%0A%20%20start%3A%20(cont)%20%3D%3E%20load_db_somehow%20%40conf.conn%2C%20%40conf.user%2C%20%40conf.password%2C%20cont%0A%0Asub_config%20%3D%20start%3A%20(cont)%20-%3E%20readJSON%20'config.json'%2C%20cont%0A%0Asub_ctrl%20%3D%20new%20class%0A%20%20db%3A%20inject%20'db'%0A%20%20start%3A%20(cont)%20%3D%3E%20use_db_whatever%20%40db%2C%20cont%0A%0As%20%3D%20system%0A%20%20config%3A%20sub_config%0A%20%20conf_db1%3A%20field%20'config'%2C%20'db1'%0A%0A%20%20db1%3A%20rename%20sub_db%2C%20%7Bconfig%3A'conf_db1'%7D%0A%20%20ctrl%3A%20rename%20sub_ctrl%2C%20%7Bdb%3A'db1'%7D%0Astart%20s%2C%20(err%2C%20api)%20-%3E%0A%20%20if%20err%20then%20return%20handle_err%20err%0A%20%20i_can_use_any_of_above%20api.ctrl%0A).
 
@@ -97,9 +97,9 @@ For more details see [API](#api) or for exact details and expectations [tests](t
 - only provides starting and cannot be used to change anything afterwards
 - all subsystems are started 'sequentially'
   - even if some don't depend on each other, they will not be started in 'parallel' (truly asynchronously)
-  - if it bugs you, please feel free to make a pull request
-    - (all you need is: replace toposort with topotree and changing how is context created and executed)
-    - I didn't waste time on it, as I doubt I will ever need it*. 
+  - if it bugs you, I am planning on making a promise based variant, with `start :: P deps -> P api`
+    - I didn't waste time on it, as I doubt I will ever need it*.
+      - (promises seem cleaner, but are not as widespread, yet, and I wanted to keep this as lightweiht as possible)
       - (* something starting too slowly and this making it significantly faster)
 
 ## API
@@ -184,7 +184,7 @@ and 'required' by the other subsystems.
 
 Improves change locality.
 
-All subsystems should have dependecy names that make the most sense in that subsystem. 
+All subsystems should have dependecy names that make the most sense in that subsystem.
 This means that system and subsystem use different name to describe the same dependency.
 To connect them, one has to describe which pair together.
 
