@@ -197,7 +197,7 @@ fmap = (dep, fn) -> new class
 rename = (system, map) ->
   s = scan system
   for [key, old] in s
-    system[key] = inject map[old]
+    system[key] = inject (map[old] or old)
   system
 
 # rename dependencies
