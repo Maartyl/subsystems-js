@@ -271,11 +271,13 @@
   };
 
   rename = function(system, map) {
-    var i, key, len, old, ref, s;
+    var dep, i, key, len, old, ref, s;
     s = scan(system);
     for (i = 0, len = s.length; i < len; i++) {
       ref = s[i], key = ref[0], old = ref[1];
-      system[key] = inject(map[old]);
+      if (dep = map[old]) {
+        system[key] = inject(dep);
+      }
     }
     return system;
   };

@@ -248,6 +248,17 @@ describe 'system', ->
           expect(api).to.have.deep.property 'b.val', 12
           expect(api).to.have.deep.property 'b.q.val', 42
 
+      it 'rename - partial', system_test expect_ok,
+        a: mk 42, {}
+        b: s.rename (mk 12, {q:'test', c:'c'}),
+          test:'a'
+        c: mk 1, {}
+        (api) ->
+          expect(api).to.have.deep.property 'b.val', 12
+          expect(api).to.have.deep.property 'c.val', 1
+          expect(api).to.have.deep.property 'b.q.val', 42
+          expect(api).to.have.deep.property 'b.c.val', 1
+
       it 'field', system_test expect_ok,
         a: mk 42, {}
         b: s.field 'a', 'val' # on dep 'a' access field 'val'
@@ -407,7 +418,7 @@ describe 'system', ->
         (err) -> expect(err).to.equal er
 
     describe 'dependency named start', ->
-    
+
       it 'system', ->
         fn = -> s.system start: mk 42, {}
         expect(fn).to.throw Error, /called \'start\'/
